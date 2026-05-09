@@ -78,6 +78,11 @@ export class ProductServiceStack extends cdk.Stack {
       handler: "getProductsById.handler",
     });
 
+    productsTable.grantReadData(getProductsList);
+    stocksTable.grantReadData(getProductsList);
+    productsTable.grantReadData(getProductsById);
+    stocksTable.grantReadData(getProductsById);
+
     const createProduct = new lambda.Function(this, "createProduct", {
       ...lambdaConfig,
       handler: "createProduct.handler",

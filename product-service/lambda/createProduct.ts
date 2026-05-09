@@ -10,49 +10,60 @@ const HEADERS = {
 };
 
 export const handler: APIGatewayProxyHandler = async (event) => {
-  const body = JSON.parse(event.body ?? "{}");
-  const { title, description, price, count } = body;
+  console.log("createProduct invoked, body:", event.body);
 
-  if (!title || price == null || count == null) {
+  try {
+    const body = JSON.parse(event.body ?? "{}");
+    const { title, description, price, count } = body;
+
+    if (!title || price == null || count == null) {
+      return {
+        statusCode: 400,
+        headers: HEADERS,
+        body: JSON.stringify({ message: "title, price and count are required" }),
+      };
+    }
+
+    const id = randomUUID();
+
+    await client.send(
+      new TransactWriteItemsCommand({
+        TransactItems: [
+          {
+            Put: {
+              TableName: "products",
+              Item: {
+                id: { S: id },
+                title: { S: title },
+                description: { S: description ?? "" },
+                price: { N: String(price) },
+              },
+            },
+          },
+          {
+            Put: {
+              TableName: "stocks",
+              Item: {
+                product_id: { S: id },
+                count: { N: String(count) },
+              },
+            },
+          },
+        ],
+      })
+    );
+
     return {
-      statusCode: 400,
+      statusCode: 201,
       headers: HEADERS,
-      body: JSON.stringify({ message: "title, price and count are required" }),
+      body: JSON.stringify({ id, title, description, price, count }),
+    };
+  } catch (e) {
+    console.error("createProduct error:", e);
+    return {
+      statusCode: 500,
+      headers: HEADERS,
+      body: JSON.stringify({ message: "Internal server error" }),
     };
   }
-
-  const id = randomUUID();
-
-  await client.send(
-    new TransactWriteItemsCommand({
-      TransactItems: [
-        {
-          Put: {
-            TableName: "products",
-            Item: {
-              id: { S: id },
-              title: { S: title },
-              description: { S: description ?? "" },
-              price: { N: String(price) },
-            },
-          },
-        },
-        {
-          Put: {
-            TableName: "stocks",
-            Item: {
-              product_id: { S: id },
-              count: { N: String(count) },
-            },
-          },
-        },
-      ],
-    })
-  );
-
-  return {
-    statusCode: 201,
-    headers: HEADERS,
-    body: JSON.stringify({ id, title, description, price, count }),
-  };
 };
