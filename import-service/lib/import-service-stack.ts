@@ -32,7 +32,7 @@ export class ImportServiceStack extends cdk.Stack {
       },
     });
 
-    importBucket.grantPut(importProductsFile);
+    importBucket.grantReadWrite(importProductsFile);
 
     const api = new apigateway.RestApi(this, "ImportServiceApi", {
       restApiName: "Import Service",
