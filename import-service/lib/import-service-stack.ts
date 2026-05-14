@@ -43,7 +43,11 @@ export class ImportServiceStack extends cdk.Stack {
     });
 
     const importResource = api.root.addResource("import");
-    importResource.addMethod("GET", new apigateway.LambdaIntegration(importProductsFile));
+    importResource.addMethod("GET", new apigateway.LambdaIntegration(importProductsFile), {
+      requestParameters: {
+        "method.request.querystring.name": true,
+      },
+    });
 
     new cdk.CfnOutput(this, "ApiUrl", {
       value: api.url,
