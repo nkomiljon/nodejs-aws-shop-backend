@@ -1,6 +1,7 @@
 import { S3Event } from "aws-lambda";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { Readable } from "stream";
+import csv from "csv-parser";
 
 const s3 = new S3Client();
 
@@ -15,7 +16,8 @@ export const handler = async (event: S3Event): Promise<void> => {
 
     await new Promise<void>((resolve, reject) => {
       (Body as Readable)
-        .on("data", (chunk: Buffer) => console.log(chunk.toString()))
+        .pipe(csv())
+        .on("data", (row) => console.log(row))
         .on("end", resolve)
         .on("error", reject);
     });
