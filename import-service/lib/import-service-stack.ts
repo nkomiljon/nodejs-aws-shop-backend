@@ -11,7 +11,7 @@ export class ImportServiceStack extends cdk.Stack {
     super(scope, id, props);
 
     const importBucket = new s3.Bucket(this, "ImportBucket", {
-      bucketName: "rsschool-import-service-bucket",
+      bucketName: "my-react-app-storage",
       cors: [{
         allowedMethods: [s3.HttpMethods.PUT],
         allowedOrigins: ["*"],
