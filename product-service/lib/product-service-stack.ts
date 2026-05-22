@@ -4,6 +4,8 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as cr from "aws-cdk-lib/custom-resources";
+import * as sqs from "aws-cdk-lib/aws-sqs";
+import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as path from "path";
 
 export class ProductServiceStack extends cdk.Stack {
@@ -110,6 +112,32 @@ export class ProductServiceStack extends cdk.Stack {
     new cdk.CfnOutput(this, "ApiUrl", {
       value: api.url,
       description: "Product Service API Gateway URL",
+    });
+
+    const catalogItemsQueue = new sqs.Queue(this, "catalogItemsQueue", {
+      queueName: "catalogItemsQueue",
+    });
+
+    const catalogBatchProcess = new lambda.Function(this, "catalogBatchProcess", {
+      ...lambdaConfig,
+      handler: "catalogBatchProcess.handler",
+    });
+
+    productsTable.grantWriteData(catalogBatchProcess);
+    stocksTable.grantWriteData(catalogBatchProcess);
+
+    catalogBatchProcess.addEventSource(
+      new lambdaEventSources.SqsEventSource(catalogItemsQueue, { batchSize: 5 })
+    );
+
+    new cdk.CfnOutput(this, "CatalogItemsQueueUrl", {
+      value: catalogItemsQueue.queueUrl,
+      description: "Catalog Items SQS Queue URL",
+    });
+
+    new cdk.CfnOutput(this, "CatalogItemsQueueArn", {
+      value: catalogItemsQueue.queueArn,
+      description: "Catalog Items SQS Queue ARN",
     });
   }
 }
