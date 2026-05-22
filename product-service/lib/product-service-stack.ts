@@ -5,8 +5,13 @@ import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as cr from "aws-cdk-lib/custom-resources";
 import * as sqs from "aws-cdk-lib/aws-sqs";
+import * as sns from "aws-cdk-lib/aws-sns";
+import * as snsSubscriptions from "aws-cdk-lib/aws-sns-subscriptions";
 import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as path from "path";
+import * as dotenv from "dotenv";
+
+dotenv.config();
 
 export class ProductServiceStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -118,13 +123,29 @@ export class ProductServiceStack extends cdk.Stack {
       queueName: "catalogItemsQueue",
     });
 
+    const createProductTopic = new sns.Topic(this, "createProductTopic", {
+      topicName: "createProductTopic",
+    });
+
+    createProductTopic.addSubscription(
+      new snsSubscriptions.EmailSubscription(process.env.SNS_EMAIL_1!)
+    );
+
+    createProductTopic.addSubscription(
+      new snsSubscriptions.EmailSubscription(process.env.SNS_EMAIL_2!)
+    );
+
     const catalogBatchProcess = new lambda.Function(this, "catalogBatchProcess", {
       ...lambdaConfig,
       handler: "catalogBatchProcess.handler",
+      environment: {
+        CREATE_PRODUCT_TOPIC_ARN: createProductTopic.topicArn,
+      },
     });
 
     productsTable.grantWriteData(catalogBatchProcess);
     stocksTable.grantWriteData(catalogBatchProcess);
+    createProductTopic.grantPublish(catalogBatchProcess);
 
     catalogBatchProcess.addEventSource(
       new lambdaEventSources.SqsEventSource(catalogItemsQueue, { batchSize: 5 })
@@ -138,6 +159,11 @@ export class ProductServiceStack extends cdk.Stack {
     new cdk.CfnOutput(this, "CatalogItemsQueueArn", {
       value: catalogItemsQueue.queueArn,
       description: "Catalog Items SQS Queue ARN",
+    });
+
+    new cdk.CfnOutput(this, "CreateProductTopicArn", {
+      value: createProductTopic.topicArn,
+      description: "Create Product SNS Topic ARN",
     });
   }
 }

@@ -1,8 +1,11 @@
 import { SQSHandler } from "aws-lambda";
 import { DynamoDBClient, TransactWriteItemsCommand } from "@aws-sdk/client-dynamodb";
+import { SNSClient, PublishCommand } from "@aws-sdk/client-sns";
 import { randomUUID } from "crypto";
 
-const client = new DynamoDBClient({});
+const dynamodb = new DynamoDBClient({});
+const sns = new SNSClient({});
+const TOPIC_ARN = process.env.CREATE_PRODUCT_TOPIC_ARN!;
 
 export const handler: SQSHandler = async (event) => {
   console.log("catalogBatchProcess invoked, records:", JSON.stringify(event.Records));
@@ -18,7 +21,7 @@ export const handler: SQSHandler = async (event) => {
 
       const id = randomUUID();
 
-      await client.send(
+      await dynamodb.send(
         new TransactWriteItemsCommand({
           TransactItems: [
             {
@@ -45,7 +48,16 @@ export const handler: SQSHandler = async (event) => {
         })
       );
 
-      console.log("Product created:", { id, title, description, price, count });
+      const product = { id, title, description, price, count };
+      console.log("Product created:", product);
+
+      await sns.send(
+        new PublishCommand({
+          TopicArn: TOPIC_ARN,
+          Subject: "New Product Created",
+          Message: JSON.stringify(product),
+        })
+      );
     } catch (e) {
       console.error("Error processing record:", record.body, e);
     }
