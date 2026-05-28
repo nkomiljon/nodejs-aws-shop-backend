@@ -4,6 +4,7 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as s3notifications from "aws-cdk-lib/aws-s3-notifications";
+import * as sqs from "aws-cdk-lib/aws-sqs";
 import * as path from "path";
 
 export class ImportServiceStack extends cdk.Stack {
@@ -38,9 +39,23 @@ export class ImportServiceStack extends cdk.Stack {
     const importFileParser = new lambda.Function(this, "importFileParser", {
       ...lambdaConfig,
       handler: "importFileParser.handler",
+      environment: {
+        CATALOG_ITEMS_QUEUE_URL: sqs.Queue.fromQueueArn(
+          this,
+          "CatalogItemsQueue",
+          `arn:aws:sqs:${this.region}:${this.account}:catalogItemsQueue`
+        ).queueUrl,
+      },
     });
 
     importBucket.grantReadWrite(importFileParser);
+
+    const catalogItemsQueue = sqs.Queue.fromQueueArn(
+      this,
+      "CatalogItemsQueueRef",
+      `arn:aws:sqs:${this.region}:${this.account}:catalogItemsQueue`
+    );
+    catalogItemsQueue.grantSendMessages(importFileParser);
 
     importBucket.addEventNotification(
       s3.EventType.OBJECT_CREATED,

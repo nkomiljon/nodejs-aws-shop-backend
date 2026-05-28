@@ -7,19 +7,25 @@
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
-    "cdk": "cdk"
+    "cdk": "cdk",
+    "test": "jest"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.137",
+    "@types/jest": "^30.0.0",
     "@types/node": "^22.19.18",
     "aws-cdk": "2.1118.4",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.11",
     "ts-node": "^10.9.2",
     "typescript": "~5.7.2"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/client-sns": "^3.0.0",
     "@aws-sdk/util-dynamodb": "^3.0.0",
     "aws-cdk-lib": "^2.248.0",
-    "constructs": "^10.5.0"
+    "constructs": "^10.5.0",
+    "dotenv": "^17.4.2"
   }
 }

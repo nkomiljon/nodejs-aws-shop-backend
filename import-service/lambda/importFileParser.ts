@@ -1,9 +1,12 @@
 import { S3Event } from "aws-lambda";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import { Readable } from "stream";
 import csv from "csv-parser";
 
 const s3 = new S3Client();
+const sqs = new SQSClient();
+const QUEUE_URL = process.env.CATALOG_ITEMS_QUEUE_URL!;
 
 export const handler = async (event: S3Event): Promise<void> => {
   for (const record of event.Records) {
@@ -17,7 +20,14 @@ export const handler = async (event: S3Event): Promise<void> => {
     await new Promise<void>((resolve, reject) => {
       (Body as Readable)
         .pipe(csv())
-        .on("data", (row) => console.log(row))
+        .on("data", async (row) => {
+          await sqs.send(
+            new SendMessageCommand({
+              QueueUrl: QUEUE_URL,
+              MessageBody: JSON.stringify(row),
+            })
+          );
+        })
         .on("end", resolve)
         .on("error", reject);
     });
