@@ -5,6 +5,7 @@ import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as s3notifications from "aws-cdk-lib/aws-s3-notifications";
 import * as sqs from "aws-cdk-lib/aws-sqs";
+import * as iam from "aws-cdk-lib/aws-iam";
 import * as path from "path";
 
 export class ImportServiceStack extends cdk.Stack {
@@ -71,8 +72,25 @@ export class ImportServiceStack extends cdk.Stack {
       },
     });
 
+    const basicAuthorizerArn = cdk.Fn.importValue("BasicAuthorizerArn");
+
+    const basicAuthorizerFn = lambda.Function.fromFunctionArn(
+      this,
+      "BasicAuthorizerFn",
+      basicAuthorizerArn
+    );
+
+    basicAuthorizerFn.grantInvoke(new iam.ServicePrincipal("apigateway.amazonaws.com"));
+
+    const authorizer = new apigateway.TokenAuthorizer(this, "BasicAuthorizer", {
+      handler: basicAuthorizerFn,
+      identitySource: apigateway.IdentitySource.header("Authorization"),
+    });
+
     const importResource = api.root.addResource("import");
     importResource.addMethod("GET", new apigateway.LambdaIntegration(importProductsFile), {
+      authorizer,
+      authorizationType: apigateway.AuthorizationType.CUSTOM,
       requestParameters: {
         "method.request.querystring.name": true,
       },
